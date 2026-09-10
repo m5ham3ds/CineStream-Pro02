@@ -310,7 +310,6 @@ fun MovieDetailsScreen(
                     isMovie = true,
                     isAnime = movie.genres.any { it.contains("Animation", ignoreCase = true) || it.contains("Anime", ignoreCase = true) },
                     onDismiss = { showSourceSheet = false },
-                    onNavigateToExtensions = onNavigateToExtensions,
                     onPlay = { url, serverName, website ->
                         showSourceSheet = false
                         if (isDownloadMode) {
@@ -599,7 +598,6 @@ fun SeriesDetailsScreen(
                     episode = selectedEpisodeForSource?.episodeNumber ?: 1,
                     isAnime = series.genres.any { it.contains("Animation", ignoreCase = true) || it.contains("Anime", ignoreCase = true) },
                     onDismiss = { selectedEpisodeForSource = null },
-                    onNavigateToExtensions = onNavigateToExtensions,
                     onPlay = { url, serverName, website ->
                         val ep = selectedEpisodeForSource!!
                         selectedEpisodeForSource = null
