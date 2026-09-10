@@ -230,7 +230,7 @@ class PlayerViewModel : ViewModel() {
     private fun startExtractionTimeout() {
         extractionTimeoutJob?.cancel()
         extractionTimeoutJob = viewModelScope.launch {
-            delay(45000) // 45 seconds timeout to allow for Cloudflare bypass
+            delay(300000) // 5 minutes timeout to allow for manual Cloudflare bypass
             if (_uiState.value.currentVideoUrl == null) {
                 tryNextFallback()
             }

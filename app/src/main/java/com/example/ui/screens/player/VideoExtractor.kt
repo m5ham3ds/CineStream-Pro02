@@ -22,6 +22,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -45,6 +49,35 @@ fun HiddenVideoExtractor(
     onCloudflareDetected: ((Boolean) -> Unit)? = null
 ) {
     var isCloudflareDetected by remember { mutableStateOf(false) }
+    var showConfirmDialog by remember { mutableStateOf(false) }
+    var offsetX by remember { mutableStateOf(0f) }
+    var offsetY by remember { mutableStateOf(0f) }
+
+    if (showConfirmDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showConfirmDialog = false },
+            title = { Text("تأكيد") },
+            text = { Text("هل أنت متأكد أنك قمت بتخطي حماية Cloudflare بنجاح؟") },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        showConfirmDialog = false
+                        isCloudflareDetected = false
+                        onCloudflareDetected?.invoke(false)
+                    }
+                ) {
+                    Text("نعم، أكمل")
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = { showConfirmDialog = false }
+                ) {
+                    Text("إلغاء")
+                }
+            }
+        )
+    }
 
     Box(
         modifier = if (isCloudflareDetected) Modifier
@@ -56,6 +89,14 @@ fun HiddenVideoExtractor(
     ) {
         Box(
             modifier = if (isCloudflareDetected) Modifier
+                .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
+                .pointerInput(Unit) {
+                    detectDragGestures { change, dragAmount ->
+                        change.consume()
+                        offsetX += dragAmount.x
+                        offsetY += dragAmount.y
+                    }
+                }
                 .fillMaxWidth(0.9f)
                 .fillMaxHeight(0.8f)
                 .clip(RoundedCornerShape(16.dp))
@@ -74,6 +115,17 @@ fun HiddenVideoExtractor(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
+                    
+                    androidx.compose.material3.Button(
+                        onClick = { 
+                            showConfirmDialog = true
+                        },
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .fillMaxWidth()
+                    ) {
+                        Text("تم التحقق، متابعة")
+                    }
                 }
                 AndroidView(
                     modifier = Modifier
