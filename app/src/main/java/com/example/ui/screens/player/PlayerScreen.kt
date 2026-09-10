@@ -97,6 +97,7 @@ fun PlayerScreen(mediaId: String, isMovie: Boolean, title: String, url: String? 
     // Server & Website state
     var showServerSheet by remember { mutableStateOf(false) }
     var showWebsiteSheet by remember { mutableStateOf(false) }
+    var isCloudflareChallenge by remember { mutableStateOf(false) }
 
     // Force landscape mode for better viewing
     DisposableEffect(Unit) {
@@ -300,12 +301,15 @@ fun PlayerScreen(mediaId: String, isMovie: Boolean, title: String, url: String? 
                     },
                     onExtractionFailed = {
                         viewModel.tryNextFallback()
+                    },
+                    onCloudflareDetected = { isCf ->
+                        isCloudflareChallenge = isCf
                     }
                 )
             }
         }
         
-        if (uiState.isLoading && !showInitialSelection) {
+        if (uiState.isLoading && !showInitialSelection && !isCloudflareChallenge) {
             Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     CircularProgressIndicator(color = Color(0xFFE50914))

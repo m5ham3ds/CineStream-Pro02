@@ -9,11 +9,23 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.viewinterop.AndroidView
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -29,11 +41,45 @@ fun HiddenVideoExtractor(
     title: String = "",
     onVideoUrlFound: (String) -> Unit,
     onIframeUrlFound: ((String) -> Unit)? = null,
-    onServersFound: ((List<String>) -> Unit)? = null, onExtractionFailed: (() -> Unit)? = null
+    onServersFound: ((List<String>) -> Unit)? = null, onExtractionFailed: (() -> Unit)? = null,
+    onCloudflareDetected: ((Boolean) -> Unit)? = null
 ) {
-    AndroidView(
-        modifier = Modifier.size(1.dp).alpha(0f), // Completely invisible but active in layout
-        factory = { ctx ->
+    var isCloudflareDetected by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = if (isCloudflareDetected) Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.8f))
+            .zIndex(100f)
+        else Modifier.size(1.dp).alpha(0f),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = if (isCloudflareDetected) Modifier
+                .fillMaxWidth(0.9f)
+                .fillMaxHeight(0.8f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+            else Modifier.fillMaxSize()
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                if (isCloudflareDetected) {
+                    Text(
+                        text = "يرجى تخطي الحماية للمتابعة...",
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        textAlign = TextAlign.Center,
+                        color = Color.Black,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                AndroidView(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    factory = { ctx ->
             WebView(ctx).apply {
                 setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
                 settings.apply {
@@ -124,7 +170,11 @@ fun HiddenVideoExtractor(
                     
                     @android.webkit.JavascriptInterface
                     fun sendBypassStatus(status: String) {
-                        // Log bypass status
+                        Handler(Looper.getMainLooper()).post {
+                            val isCf = (status == "CLOUDFLARE")
+                            isCloudflareDetected = isCf
+                            onCloudflareDetected?.invoke(isCf)
+                        }
                     }
                 }, "AndroidBridge")
 
@@ -222,4 +272,7 @@ fun HiddenVideoExtractor(
             }
         }
     )
+            }
+        }
+    }
 }

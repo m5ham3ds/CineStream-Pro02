@@ -27,6 +27,14 @@ object SiteScripts {
                                    bodyText.includes('not a bot') || bodyText.includes('يتم التحقق') || bodyText.includes('cloudflare');
                 var cf = document.querySelector('.cf-turnstile-wrapper, #challenge-stage, #challenge-form, .mark-as-human, #trk_jschal_js, iframe[src*="challenges.cloudflare.com"]');
                 
+                if (cf) {
+                    try {
+                        cf.click();
+                        var checkbox = document.querySelector('input[type="checkbox"]');
+                        if (checkbox) checkbox.click();
+                    } catch(e) {}
+                }
+                
                 if (isCloudflare || cf) {
 
                     if (typeof AndroidBridge !== 'undefined') AndroidBridge.sendBypassStatus("CLOUDFLARE");
@@ -625,6 +633,14 @@ object SiteScripts {
                                    bodyText.includes('security verification') || bodyText.includes('malicious bots') || 
                                    bodyText.includes('not a bot') || bodyText.includes('يتم التحقق') || bodyText.includes('cloudflare');
                 var cf = document.querySelector('.cf-turnstile-wrapper, #challenge-stage, #challenge-form, .mark-as-human, #trk_jschal_js, iframe[src*="challenges.cloudflare.com"]');
+                
+                if (cf) {
+                    try {
+                        cf.click();
+                        var checkbox = document.querySelector('input[type="checkbox"]');
+                        if (checkbox) checkbox.click();
+                    } catch(e) {}
+                }
                 
                 if (isCloudflare || cf) {
 
