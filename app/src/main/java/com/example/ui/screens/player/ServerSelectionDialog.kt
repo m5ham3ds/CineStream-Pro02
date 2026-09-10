@@ -7,6 +7,11 @@ import com.example.extensions.ProviderExtension
 import com.example.extensions.ExtensionManager
 import androidx.compose.material.icons.filled.ArrowBack
 
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.unit.IntOffset
+
 import android.annotation.SuppressLint
 import android.os.Handler
 import android.os.Looper
@@ -50,6 +55,7 @@ import java.net.URLEncoder
 
 @SuppressLint("SetJavaScriptEnabled")
 @OptIn(ExperimentalMaterial3Api::class)
+
 @Composable
 fun ServerSelectionDialog(
     title: String,
@@ -87,6 +93,10 @@ fun ServerSelectionDialog(
     var showManualConfirmDialog by remember { mutableStateOf(false) }
     var showOpenBrowserConfirmDialog by remember { mutableStateOf(false) }
     var showSkipSiteConfirmDialog by remember { mutableStateOf(false) }
+
+    var offsetX by remember { mutableStateOf(0f) }
+    var offsetY by remember { mutableStateOf(0f) }
+
 
     // --- Quality Extraction States ---
     var selectedServerForQuality by remember { mutableStateOf<String?>(null) }
@@ -166,145 +176,57 @@ Dialog(
 
         val activeColor = if (isVerified || isNormal) Color(0xFF00C853) else Color(0xFFFF1111)
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.95f)
-                .wrapContentHeight()
-                .clip(RoundedCornerShape(24.dp))
-                .background(Color(0xFF16161A))
-                .border(1.dp, Color(0x33FF1111), RoundedCornerShape(24.dp))
-                .clickable(
-                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                    indication = null,
-                    onClick = {} // Consume clicks inside the dialog so they don't dismiss
-                )
-        ) {
-            // Subtle top-left / top-right radial gradient for the red glow
+
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            
+            // --- THE WEBVIEW (Draggable if Cloudflare, hidden otherwise) ---
             Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(Color(0x15FF1111), Color.Transparent),
-                            radius = 600f,
-                            center = androidx.compose.ui.geometry.Offset(0f, 0f)
-                        )
-                    )
-            )
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Header
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .background(Color(0xFF330000), CircleShape)
-                            .clickable {
-                                if (selectedServerForQuality != null) {
-                                    selectedServerForQuality = null
-                                    extractedQualities = emptyList()
-                                    isExtractingQuality = false
-                                }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (selectedServerForQuality != null) androidx.compose.material.icons.Icons.Default.ArrowBack else androidx.compose.material.icons.Icons.Outlined.CloudDownload,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "اختر السيرفر",
-                            color = Color.White,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = "جاري الإتصال بالسيرفرات المتاحة...",
-                            color = Color.Gray,
-                            style = MaterialTheme.typography.bodySmall,
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    IconButton(
-                        onClick = {
-                            if (isLoading) {
-                                showCancelConfirmDialog = true
-                            } else {
-                                onDismiss()
-                            }
-                        },
-                        modifier = Modifier
-                            .size(36.dp)
-                            .background(Color(0xFF222225), CircleShape)
-                            .border(1.dp, Color(0xFF333333), CircleShape)
-                    ) {
-                        Icon(Icons.Default.Close, contentDescription = "إغلاق", tint = Color.White, modifier = Modifier.size(18.dp))
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                if (showManualConfirmDialog) {
-                    androidx.compose.material3.AlertDialog(
-                        onDismissRequest = { showManualConfirmDialog = false },
-                        title = { Text("تأكيد", color = Color.White) },
-                        text = { Text("هل أنت متأكد أنك قمت بتخطي حماية Cloudflare بنجاح؟", color = Color.LightGray) },
-                        containerColor = Color(0xFF222225),
-                        confirmButton = {
-                            androidx.compose.material3.TextButton(
-                                onClick = {
-                                    showManualConfirmDialog = false
-                                    bypassStatus = "NORMAL"
-                                }
-                            ) {
-                                Text("نعم، أكمل", color = Color(0xFFE50914))
-                            }
-                        },
-                        dismissButton = {
-                            androidx.compose.material3.TextButton(
-                                onClick = { showManualConfirmDialog = false }
-                            ) {
-                                Text("إلغاء", color = Color.White)
+                modifier = if (isCloudflare) {
+                    Modifier
+                        .offset { androidx.compose.ui.unit.IntOffset(offsetX.toInt(), offsetY.toInt()) }
+                        .pointerInput(Unit) {
+                            detectDragGestures { change, dragAmount ->
+                                change.consume()
+                                offsetX += dragAmount.x
+                                offsetY += dragAmount.y
                             }
                         }
-                    )
+                        .fillMaxWidth(0.9f)
+                        .fillMaxHeight(0.85f)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.White)
+                        .zIndex(100f)
+                } else {
+                    Modifier.size(1.dp).alpha(0.01f).zIndex(-1f)
                 }
-
-                if (isLoading && !isFailed) {
-                    androidx.compose.animation.AnimatedContent(
-                        targetState = bypassStatus,
-                        transitionSpec = {
-                            androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) togetherWith androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(300))
-                        }, label = "BypassAnimation"
-                    ) { currentStatus ->
-                        Box(
-                            modifier = Modifier.fillMaxWidth().height(450.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp)),
-                            contentAlignment = Alignment.Center
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    if (isCloudflare) {
+                        Text(
+                            text = "يرجى تخطي الحماية للمتابعة...",
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                            color = Color.Black,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        androidx.compose.material3.Button(
+                            onClick = { showManualConfirmDialog = true },
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                .fillMaxWidth(),
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFE50914))
                         ) {
-                            // 1. The WebView (Always present, but hidden by overlay if not Cloudflare)
-                            key(retryTrigger) {
+                            Text("تم التحقق، متابعة", color = Color.White)
+                        }
+                    }
+                    
+                    // The WebView block
+                                                key(retryTrigger) {
                                 AndroidView(
-                                    modifier = Modifier.fillMaxSize().alpha(if (currentStatus == "CLOUDFLARE") 1f else 0.01f),
+                                    modifier = Modifier.fillMaxSize(),
                                     factory = { ctx ->
                                         WebView(ctx).apply {
                                             android.webkit.CookieManager.getInstance().setAcceptCookie(true)
@@ -485,18 +407,126 @@ Dialog(
                                     }
                                 )
                             }
-                            
-                            // 1.5 The Cloudflare Confirmation Button overlay
-                            if (currentStatus == "CLOUDFLARE") {
-                                Box(modifier = Modifier.fillMaxSize().padding(bottom = 16.dp), contentAlignment = Alignment.BottomCenter) {
-                                    Button(
-                                        onClick = { showManualConfirmDialog = true },
-                                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFE50914))
-                                    ) {
-                                        Text("تم التحقق، متابعة", color = Color.White, fontWeight = FontWeight.Bold)
-                                    }
+                }
+            }
+            
+            if (!isCloudflare) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.95f)
+
+                .wrapContentHeight()
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color(0xFF16161A))
+                .border(1.dp, Color(0x33FF1111), RoundedCornerShape(24.dp))
+                .clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null,
+                    onClick = {} // Consume clicks inside the dialog so they don't dismiss
+                )
+        ) {
+            // Subtle top-left / top-right radial gradient for the red glow
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(Color(0x15FF1111), Color.Transparent),
+                            radius = 600f,
+                            center = androidx.compose.ui.geometry.Offset(0f, 0f)
+                        )
+                    )
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(Color(0xFF330000), CircleShape)
+                            .clickable {
+                                if (selectedServerForQuality != null) {
+                                    selectedServerForQuality = null
+                                    extractedQualities = emptyList()
+                                    isExtractingQuality = false
                                 }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (selectedServerForQuality != null) androidx.compose.material.icons.Icons.Default.ArrowBack else androidx.compose.material.icons.Icons.Outlined.CloudDownload,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "اختر السيرفر",
+                            color = Color.White,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = "جاري الإتصال بالسيرفرات المتاحة...",
+                            color = Color.Gray,
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    IconButton(
+                        onClick = {
+                            if (isLoading) {
+                                showCancelConfirmDialog = true
+                            } else {
+                                onDismiss()
                             }
+                        },
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(Color(0xFF222225), CircleShape)
+                            .border(1.dp, Color(0xFF333333), CircleShape)
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = "إغلاق", tint = Color.White, modifier = Modifier.size(18.dp))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+
+
+                if (isLoading && !isFailed) {
+                    androidx.compose.animation.AnimatedContent(
+                        targetState = bypassStatus,
+                        transitionSpec = {
+                            androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) togetherWith androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(300))
+                        }, label = "BypassAnimation"
+                    ) { currentStatus ->
+                        Box(
+                            modifier = Modifier.fillMaxWidth().height(450.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            // 1. The WebView (Always present, but hidden by overlay if not Cloudflare)
+/* WEBVIEW WAS HERE */
+                            
+                            
 
                             // 2. The Overlay UI (Shown when NOT CLOUDFLARE)
                             if (currentStatus != "CLOUDFLARE") {
@@ -891,6 +921,34 @@ Dialog(
                     }
                 }
         
+            }
+
+                if (showManualConfirmDialog) {
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { showManualConfirmDialog = false },
+                        title = { Text("تأكيد", color = Color.White) },
+                        text = { Text("هل أنت متأكد أنك قمت بتخطي حماية Cloudflare بنجاح؟", color = Color.LightGray) },
+                        containerColor = Color(0xFF222225),
+                        confirmButton = {
+                            androidx.compose.material3.TextButton(
+                                onClick = {
+                                    showManualConfirmDialog = false
+                                    bypassStatus = "NORMAL"
+                                }
+                            ) {
+                                Text("نعم، أكمل", color = Color(0xFFE50914))
+                            }
+                        },
+                        dismissButton = {
+                            androidx.compose.material3.TextButton(
+                                onClick = { showManualConfirmDialog = false }
+                            ) {
+                                Text("إلغاء", color = Color.White)
+                            }
+                        }
+                    )
+                }
+
         // Hidden Extractor for Quality
         if (isExtractingQuality && selectedServerForQuality != null) {
             LaunchedEffect(selectedServerForQuality) {
@@ -968,6 +1026,7 @@ Dialog(
 }
 }
 
+} 
 @Composable
 fun StatusBadge(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector, statusColor: Color, modifier: Modifier = Modifier) {
     Row(
