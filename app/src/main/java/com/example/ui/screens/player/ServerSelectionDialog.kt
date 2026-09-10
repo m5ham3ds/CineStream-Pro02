@@ -93,6 +93,7 @@ fun ServerSelectionDialog(
     var showManualConfirmDialog by remember { mutableStateOf(false) }
     var showOpenBrowserConfirmDialog by remember { mutableStateOf(false) }
     var showSkipSiteConfirmDialog by remember { mutableStateOf(false) }
+    var showNoMoreExtensionsDialog by remember { mutableStateOf(false) }
 
     var offsetX by remember { mutableStateOf(0f) }
     var offsetY by remember { mutableStateOf(0f) }
@@ -743,12 +744,7 @@ Dialog(
                                 androidx.compose.material3.TextButton(
                                     onClick = {
                                         showOpenBrowserConfirmDialog = false
-                                        isFailed = false
-                                        isLoading = true
-                                        currentSiteIndex = 0
-                                        currentExtension = safeSites[0]
                                         bypassStatus = "CLOUDFLARE"
-                                        retryTrigger++
                                     }
                                 ) { Text("نعم", color = Color(0xFFE50914)) }
                             },
@@ -768,16 +764,50 @@ Dialog(
                                 androidx.compose.material3.TextButton(
                                     onClick = {
                                         showSkipSiteConfirmDialog = false
-                                        isFailed = false
-                                        isLoading = true
-                                        currentSiteIndex = if (safeSites.size > 1) 1 else 0
-                                        currentExtension = safeSites[currentSiteIndex]
-                                        retryTrigger++
+                                        if (currentSiteIndex < safeSites.size - 1) {
+                                            isFailed = false
+                                            isLoading = true
+                                            currentSiteIndex++
+                                            currentExtension = safeSites[currentSiteIndex]
+                                            bypassStatus = "CHECKING_CLOUDFLARE"
+                                            retryTrigger++
+                                        } else {
+                                            showNoMoreExtensionsDialog = true
+                                        }
                                     }
                                 ) { Text("نعم", color = Color(0xFFE50914)) }
                             },
                             dismissButton = {
                                 androidx.compose.material3.TextButton(onClick = { showSkipSiteConfirmDialog = false }) { Text("إلغاء", color = Color.White) }
+                            }
+                        )
+                    }
+                    if (showNoMoreExtensionsDialog) {
+                        androidx.compose.material3.AlertDialog(
+                            onDismissRequest = { showNoMoreExtensionsDialog = false },
+                            title = { Text("لا توجد إضافات أخرى", color = Color.White) },
+                            text = { Text("لم يتم تثبيت أي إضافات أخرى للمتابعة. ماذا تريد أن تفعل؟", color = Color.LightGray) },
+                            containerColor = Color(0xFF222225),
+                            confirmButton = {
+                                Row {
+                                    androidx.compose.material3.TextButton(
+                                        onClick = {
+                                            showNoMoreExtensionsDialog = false
+                                        }
+                                    ) { Text("العودة", color = Color(0xFF00C853)) }
+                                    androidx.compose.material3.TextButton(
+                                        onClick = {
+                                            showNoMoreExtensionsDialog = false
+                                            showCancelConfirmDialog = true
+                                        }
+                                    ) { Text("إلغاء تماماً", color = Color(0xFFE50914)) }
+                                }
+                            },
+                            dismissButton = {
+                                androidx.compose.material3.TextButton(onClick = { 
+                                    showNoMoreExtensionsDialog = false
+                                    onDismiss()
+                                }) { Text("إغلاق وإضافة مواقع", color = Color.White) }
                             }
                         )
                     }
