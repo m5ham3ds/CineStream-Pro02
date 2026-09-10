@@ -40,7 +40,7 @@ object SiteScripts {
                     if (typeof AndroidBridge !== 'undefined') AndroidBridge.sendBypassStatus("CLOUDFLARE");
                     // return; // We no longer return here so the script can keep checking for search results
                 } else {
-                    if (typeof AndroidBridge !== 'undefined') AndroidBridge.sendBypassStatus("NORMAL");
+                    
                 }
                 
                 var serverItems = [];
@@ -647,7 +647,7 @@ object SiteScripts {
                     if (typeof AndroidBridge !== 'undefined') AndroidBridge.sendBypassStatus("CLOUDFLARE");
                     // return; // We no longer return here so the script can keep checking for search results
                 } else {
-                    if (typeof AndroidBridge !== 'undefined') AndroidBridge.sendBypassStatus("NORMAL");
+                    
                 }
                 
                 var targetId = "${targetServerId ?: ""}";

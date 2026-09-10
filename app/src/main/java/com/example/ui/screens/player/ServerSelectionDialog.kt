@@ -84,6 +84,9 @@ fun ServerSelectionDialog(
     var showCancelConfirmDialog by remember { mutableStateOf(false) }
     var isNetworkError by remember { mutableStateOf(false) }
     var retryTrigger by remember { mutableIntStateOf(0) }
+    var showManualConfirmDialog by remember { mutableStateOf(false) }
+    var showOpenBrowserConfirmDialog by remember { mutableStateOf(false) }
+    var showSkipSiteConfirmDialog by remember { mutableStateOf(false) }
 
     // --- Quality Extraction States ---
     var selectedServerForQuality by remember { mutableStateOf<String?>(null) }
@@ -260,6 +263,32 @@ Dialog(
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
+
+                if (showManualConfirmDialog) {
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { showManualConfirmDialog = false },
+                        title = { Text("تأكيد", color = Color.White) },
+                        text = { Text("هل أنت متأكد أنك قمت بتخطي حماية Cloudflare بنجاح؟", color = Color.LightGray) },
+                        containerColor = Color(0xFF222225),
+                        confirmButton = {
+                            androidx.compose.material3.TextButton(
+                                onClick = {
+                                    showManualConfirmDialog = false
+                                    bypassStatus = "NORMAL"
+                                }
+                            ) {
+                                Text("نعم، أكمل", color = Color(0xFFE50914))
+                            }
+                        },
+                        dismissButton = {
+                            androidx.compose.material3.TextButton(
+                                onClick = { showManualConfirmDialog = false }
+                            ) {
+                                Text("إلغاء", color = Color.White)
+                            }
+                        }
+                    )
+                }
 
                 if (isLoading && !isFailed) {
                     androidx.compose.animation.AnimatedContent(
@@ -457,6 +486,18 @@ Dialog(
                                 )
                             }
                             
+                            // 1.5 The Cloudflare Confirmation Button overlay
+                            if (currentStatus == "CLOUDFLARE") {
+                                Box(modifier = Modifier.fillMaxSize().padding(bottom = 16.dp), contentAlignment = Alignment.BottomCenter) {
+                                    Button(
+                                        onClick = { showManualConfirmDialog = true },
+                                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFE50914))
+                                    ) {
+                                        Text("تم التحقق، متابعة", color = Color.White, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+
                             // 2. The Overlay UI (Shown when NOT CLOUDFLARE)
                             if (currentStatus != "CLOUDFLARE") {
                                 Box(
@@ -640,6 +681,75 @@ Dialog(
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE50914))
                     ) {
                         Text("إعادة المحاولة مجدداً", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            showOpenBrowserConfirmDialog = true
+                        },
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+                    ) {
+                        Text("فتح المتصفح يدوياً للتحقق", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            showSkipSiteConfirmDialog = true
+                        },
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+                    ) {
+                        Text("تخطي الموقع الحالي", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                    
+                    if (showOpenBrowserConfirmDialog) {
+                        androidx.compose.material3.AlertDialog(
+                            onDismissRequest = { showOpenBrowserConfirmDialog = false },
+                            title = { Text("تأكيد فتح المتصفح", color = Color.White) },
+                            text = { Text("هل أنت متأكد من رغبتك في فتح المتصفح يدوياً للتحقق من الرابط؟", color = Color.LightGray) },
+                            containerColor = Color(0xFF222225),
+                            confirmButton = {
+                                androidx.compose.material3.TextButton(
+                                    onClick = {
+                                        showOpenBrowserConfirmDialog = false
+                                        isFailed = false
+                                        isLoading = true
+                                        currentSiteIndex = 0
+                                        currentExtension = safeSites[0]
+                                        bypassStatus = "CLOUDFLARE"
+                                        retryTrigger++
+                                    }
+                                ) { Text("نعم", color = Color(0xFFE50914)) }
+                            },
+                            dismissButton = {
+                                androidx.compose.material3.TextButton(onClick = { showOpenBrowserConfirmDialog = false }) { Text("إلغاء", color = Color.White) }
+                            }
+                        )
+                    }
+                    
+                    if (showSkipSiteConfirmDialog) {
+                        androidx.compose.material3.AlertDialog(
+                            onDismissRequest = { showSkipSiteConfirmDialog = false },
+                            title = { Text("تأكيد التخطي", color = Color.White) },
+                            text = { Text("هل أنت متأكد من رغبتك في تخطي هذا الموقع والانتقال للتالي؟", color = Color.LightGray) },
+                            containerColor = Color(0xFF222225),
+                            confirmButton = {
+                                androidx.compose.material3.TextButton(
+                                    onClick = {
+                                        showSkipSiteConfirmDialog = false
+                                        isFailed = false
+                                        isLoading = true
+                                        currentSiteIndex = if (safeSites.size > 1) 1 else 0
+                                        currentExtension = safeSites[currentSiteIndex]
+                                        retryTrigger++
+                                    }
+                                ) { Text("نعم", color = Color(0xFFE50914)) }
+                            },
+                            dismissButton = {
+                                androidx.compose.material3.TextButton(onClick = { showSkipSiteConfirmDialog = false }) { Text("إلغاء", color = Color.White) }
+                            }
+                        )
                     }
                 } else if (extractedServers.isNotEmpty()) {
                     if (selectedServerForQuality != null) {
